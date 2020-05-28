@@ -102,7 +102,7 @@ class PM_Paypal_Tracking {
 									$current_tracking_data,
 								);
 								$item_tracking_data = json_encode( $item_tracking_data );
-								wc_update_order_item_meta( $item_id, '_vi_wot_order_item_tracking_data', $item_tracking_data );
+								wc_update_order_item_meta( $order_item_id, '_vi_wot_order_item_tracking_data', $item_tracking_data );
 							}
 						}
 
