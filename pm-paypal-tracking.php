@@ -17,42 +17,46 @@ define( 'PM_PAYPAL_TRACKING_URL', plugin_dir_url( __FILE__ ) );
 class PM_Paypal_Tracking {
 	public function __construct() {
 		add_action( 'woocommerce_new_customer_note', array( $this, 'on_add_order_note' ), PHP_INT_MAX, 1 );
-		add_action( 'init', function() {
-			if ( isset( $_GET['dev_submit_paypal_tracking'] ) ) {
-				$dev_note = get_option( 'dev_order_note_data', array() );
+		add_action(
+			'init',
+			function() {
+				if ( isset( $_GET['dev_submit_paypal_tracking'] ) ) {
+					$dev_note = get_option( 'dev_order_note_data', array() );
 
-				$order_id = 16262;
-				$customer_note = $dev_note['customer_note'];
+					$order_id      = 16262;
+					$customer_note = $dev_note['customer_note'];
 
-				$result = $this->submit_order_item_tracking( $order_id, $customer_note );
-				echo 'Result: ' . $result;
-				die;
-			}
-
-			if ( isset( $_GET['dev_paypal_tracking'] ) ) {
-				$order_id = $_GET['dev_paypal_tracking'];
-				$order = wc_get_order( $order_id );
-				if ( is_object( $order ) && method_exists( $order, 'get_id' ) ) {
-					$customer_order_notes = $order->get_customer_order_notes();
-					if ( is_array( $customer_order_notes ) && ! empty( $customer_order_notes ) ) {
-						foreach ( $customer_order_notes as $note_item ) {
-							$note_content = isset( $note_item->comment_content ) ? $note_item->comment_content : '';
-							if ( ! empty( $note_content ) ) {
-								$result = $this->submit_order_item_tracking( $order_id, $note_content );
-								echo 'Result: ' . $result;
-							}
-						}
-					}
+					$result = $this->submit_order_item_tracking( $order_id, $customer_note );
+					echo 'Result: ' . $result;
 					die;
 				}
-			}
-		}, PHP_INT_MAX );
+
+				if ( isset( $_GET['dev_paypal_tracking'] ) ) {
+					$order_id = $_GET['dev_paypal_tracking'];
+					$order    = wc_get_order( $order_id );
+					if ( is_object( $order ) && method_exists( $order, 'get_id' ) ) {
+						$customer_order_notes = $order->get_customer_order_notes();
+						if ( is_array( $customer_order_notes ) && ! empty( $customer_order_notes ) ) {
+							foreach ( $customer_order_notes as $note_item ) {
+								$note_content = isset( $note_item->comment_content ) ? $note_item->comment_content : '';
+								if ( ! empty( $note_content ) ) {
+									$result = $this->submit_order_item_tracking( $order_id, $note_content );
+									echo 'Result: ' . $result;
+								}
+							}
+						}
+						die;
+					}
+				}
+			},
+			PHP_INT_MAX
+		);
 	}
 
 	public function submit_order_item_tracking( $order_id, $customer_note ) {
 		$order = wc_get_order( $order_id );
 		if ( is_object( $order ) && method_exists( $order, 'get_id' ) ) {
-			$paypal_method          = $order->get_payment_method();
+			$paypal_method = $order->get_payment_method();
 			if ( false !== strpos( $paypal_method, 'paypal' ) ) {
 				preg_match( '/<a(.*?)>(.*?)<\\/a>/si', $customer_note, $match );
 				if ( isset( $match[2] ) && ! empty( $match[2] ) ) {
@@ -65,10 +69,10 @@ class PM_Paypal_Tracking {
 				}
 
 				if ( ! empty( $tracking_number ) && ! empty( $item_sku ) ) {
-					$order_items = $order->get_items();
+					$order_items   = $order->get_items();
 					$order_item_id = 0;
 					foreach ( $order_items as $item ) {
-						$item_product = $item->get_product();
+						$item_product     = $item->get_product();
 						$item_product_sku = $item_product->get_sku();
 
 						if ( $item_product_sku == $item_sku ) {
@@ -78,17 +82,17 @@ class PM_Paypal_Tracking {
 					}
 
 					if ( $order_item_id > 0 ) {
-						$transaction_id                = $order->get_transaction_id();
-						$item_tracking_data     = wc_get_order_item_meta( $order_item_id, '_vi_wot_order_item_tracking_data', true );
+						$transaction_id     = $order->get_transaction_id();
+						$item_tracking_data = wc_get_order_item_meta( $order_item_id, '_vi_wot_order_item_tracking_data', true );
 
 						if ( empty( $item_tracking_data ) ) {
-							$object = new VI_WOO_ORDERS_TRACKING_ADMIN_IMPORT_CSV();
+							$object       = new VI_WOO_ORDERS_TRACKING_ADMIN_IMPORT_CSV();
 							$carrier_slug = $this->detect_tracking_carrier_code( $tracking_number );
-							$carrier         = $object->get_shipping_carrier_by_slug( $carrier_slug );
+							$carrier      = $object->get_shipping_carrier_by_slug( $carrier_slug );
 							if ( is_array( $carrier ) && count( $carrier ) ) {
-								$carrier_url           = $carrier['url'];
-								$carrier_name          = $carrier['name'];
-								$carrier_type          = $carrier['carrier_type'];
+								$carrier_url  = $carrier['url'];
+								$carrier_name = $carrier['name'];
+								$carrier_type = $carrier['carrier_type'];
 
 								$current_tracking_data = array(
 									'tracking_number' => $tracking_number,
@@ -98,10 +102,10 @@ class PM_Paypal_Tracking {
 									'carrier_type'    => $carrier_type,
 									'time'            => time(),
 								);
-								$item_tracking_data = array(
+								$item_tracking_data    = array(
 									$current_tracking_data,
 								);
-								$item_tracking_data = json_encode( $item_tracking_data );
+								$item_tracking_data    = json_encode( $item_tracking_data );
 								wc_update_order_item_meta( $order_item_id, '_vi_wot_order_item_tracking_data', $item_tracking_data );
 							}
 						}
@@ -122,9 +126,9 @@ class PM_Paypal_Tracking {
 										'tracking_number' => $current_tracking_data['tracking_number'],
 									),
 								);
-								$paypal_tracking = new VI_WOO_ORDERS_TRACKING_ADMIN_ORDERS_EDIT_TRACKING();
+								$paypal_tracking   = new VI_WOO_ORDERS_TRACKING_ADMIN_ORDERS_EDIT_TRACKING();
 								$result_add_paypal = $paypal_tracking->add_trackinfo_to_paypal( $send_paypal, $paypal_method );
-								if ( $result_add_paypal['status'] === 'error' ) {
+								if ( 'error' === $result_add_paypal['status'] ) {
 									return 'error';
 								} else {
 									$paypal_added_trackings[] = $current_tracking_data['tracking_number'];
@@ -151,9 +155,10 @@ class PM_Paypal_Tracking {
 	}
 
 	public function detect_tracking_carrier_code( $tracking_code ) {
-		$allow_start_codes = array( 'GM', 'LX', 'RX', 'UV', 'CN', 'SG', 'TH', 'IN', 'HK', 'MY' );
-		$code              = strtoupper( $tracking_code );
-		$start_code        = substr( $code, 0, 2 );
+		$allow_start_codes      = array( 'GM', 'LX', 'RX', 'UV', 'CN', 'SG', 'TH', 'IN', 'HK', 'MY' );
+		$china_post_start_codes = array( 'LZ', 'LY', 'RV' );
+		$code                   = strtoupper( $tracking_code );
+		$start_code             = substr( $code, 0, 2 );
 		if ( in_array( $start_code, $allow_start_codes ) ) {
 			if ( strlen( $code ) > 12 ) {
 				return 'dhlecommerce-asia';
@@ -173,19 +178,21 @@ class PM_Paypal_Tracking {
 			return 'yun-express-cn';
 		} elseif ( in_array( $start_code, array( '82', '69', '30', '75' ) ) || strlen( $code ) == 10 || strlen( $code ) == 8 ) {
 			return 'dhl';
+		} elseif ( in_array( $start_code, $china_post_start_codes ) ) {
+			return 'china-post';
 		}
 		return 'china-ems';
 	}
 
 	public function on_add_order_note( $arg = array() ) {
 		if ( is_array( $arg ) && ! empty( $arg ) ) {
-			if ( isset( $arg['order_id'] ) &&  isset( $arg['customer_note'] ) && $arg['order_id'] > 0 && ! empty( $arg['customer_note'] ) ) {
+			if ( isset( $arg['order_id'] ) && isset( $arg['customer_note'] ) && $arg['order_id'] > 0 && ! empty( $arg['customer_note'] ) ) {
 				$result = $this->submit_order_item_tracking( $arg['order_id'], $arg['customer_note'] );
 			}
 		}
 	}
 
-	
+
 }
 new PM_Paypal_Tracking();
 
