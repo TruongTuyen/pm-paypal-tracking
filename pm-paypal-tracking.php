@@ -54,6 +54,9 @@ class PM_Paypal_Tracking {
 	}
 
 	public function submit_order_item_tracking( $order_id, $customer_note ) {
+		if ( ! class_exists( 'VI_WOO_ORDERS_TRACKING_ADMIN_IMPORT_CSV' ) ) {
+			return 'dependency_plugin_is_not_activated';
+		}
 		$order = wc_get_order( $order_id );
 		if ( is_object( $order ) && method_exists( $order, 'get_id' ) ) {
 			$paypal_method = $order->get_payment_method();
