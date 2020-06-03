@@ -50,10 +50,28 @@ class PM_Paypal_Tracking {
 				}
 
 				if ( isset( $_GET['dev_compare_string'] ) ) {
-					$str = 'Test new price Unisex T-Shirt - Dark Heather, M';
-					$str2 = 'Test new price Unisex T-Shirt - Dark Heather / M';
+					$str = 'Arnold Schwarzenegger Quilt Blanket - Queen';
+					$str2 = 'Arnold Schwarzenegger T-Shirt Quilt Blanket-Queen';
 					echo 'Format string 1: ' . $this->format_string( $str ) . '<br/>';
 					echo 'Format string 2: ' . $this->format_string( $str2 ) . '<br/>';
+					die;
+				}
+
+				if ( isset( $_GET['dev_get_note'] ) ) {
+					$customer_note = '
+					Arnold Schwarzenegger T-Shirt Quilt Blanket-Queen(fDpPDdf5hXj1-3) is added tracking code:<br>
+					<a href="https://t.17track.net/en#nums=YT2015021266086101" target="_blank">YT2015021266086101</a>
+					';
+
+					preg_match( '/<a(.*?)>(.*?)<\\/a>/si', $customer_note, $tracking );
+					echo '<pre>Tracking: ';
+					print_r( $tracking );
+					echo '</pre>';
+
+					preg_match( '/(.*?)\((.*?)\)/si', $customer_note, $product_info );
+					echo '<pre>Product info: ';
+					print_r( $product_info );
+					echo '</pre>';
 					die;
 				}
 			},
@@ -63,6 +81,9 @@ class PM_Paypal_Tracking {
 
 	public function format_string( $string = '' ) {
 		$string = strtolower( $string );
+		$string = str_replace( 'tshirt', ' ', $string );
+		$string = str_replace( 't-shirt', ' ', $string );
+
 		$string = str_replace( '-', ' ', $string );
 		$string = str_replace( '_', ' ', $string );
 		$string = str_replace( ',', ' ', $string );
@@ -112,11 +133,16 @@ class PM_Paypal_Tracking {
 				if ( ! empty( $tracking_number ) && ! empty( $item_sku ) ) {
 					$order_items   = $order->get_items();
 					$order_item_id = 0;
+
+					$count_items = count( $order_items );
 					foreach ( $order_items as $item ) {
 						$item_product     = $item->get_product();
 						$item_product_sku = $item_product->get_sku();
 						$item_product_name = $item_product->get_name();
-						if ( $item_product_sku == $item_sku || ( $this->format_string( $parse_item_name ) == $this->format_string( $item_product_name ) ) ) {
+						if ( 1 === $count_items ) {
+							$order_item_id = $item->get_id();
+							break;
+						} elseif ( $item_product_sku == $item_sku || ( $this->format_string( $parse_item_name ) == $this->format_string( $item_product_name ) ) ) {
 							$order_item_id = $item->get_id();
 							break;
 						}
