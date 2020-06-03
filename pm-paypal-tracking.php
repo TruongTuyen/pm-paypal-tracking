@@ -50,8 +50,8 @@ class PM_Paypal_Tracking {
 				}
 
 				if ( isset( $_GET['dev_compare_string'] ) ) {
-					$str = 'Dev Unisex T-Shirt - Black /   S';
-					$str2 = 'Dev Unisex T-Shirt - Black / S';
+					$str = 'Test new price Unisex T-Shirt - Dark Heather, M';
+					$str2 = 'Test new price Unisex T-Shirt - Dark Heather / M';
 					echo 'Format string 1: ' . $this->format_string( $str ) . '<br/>';
 					echo 'Format string 2: ' . $this->format_string( $str2 ) . '<br/>';
 					die;
@@ -64,6 +64,7 @@ class PM_Paypal_Tracking {
 	public function format_string( $string = '' ) {
 		$string = strtolower( $string );
 		$string = str_replace( '-', ' ', $string );
+		$string = str_replace( '_', ' ', $string );
 		$string = str_replace( ',', ' ', $string );
 		$string = str_replace( ':', ' ', $string );
 		$string = str_replace( ';', ' ', $string );
@@ -191,9 +192,9 @@ class PM_Paypal_Tracking {
 				$return_code = 'payment_method_not_paypal';
 			}
 			if ( ! empty( $return_code ) && method_exists( $order, 'add_order_note' ) ) {
-				$private_note = 'Try push tracking code to paypal: ';
+				$private_note = 'Try to push tracking code to paypal: ';
 				if ( isset( $tracking_number ) && ! empty( $tracking_number ) ) {
-					$private_note = 'Try push tracking code "' . $tracking_number . '" to paypal: ';
+					$private_note = 'Try to push tracking code "' . $tracking_number . '" to paypal: ';
 				}
 				$order->add_order_note( $private_note . $return_code );
 			}
