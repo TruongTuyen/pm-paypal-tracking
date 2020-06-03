@@ -23,7 +23,7 @@ class PM_Paypal_Tracking {
 				if ( isset( $_GET['dev_submit_paypal_tracking'] ) ) {
 					$dev_note = get_option( 'dev_order_note_data', array() );
 
-					$order_id      = 16262;
+					$order_id      = 16268;
 					$customer_note = $dev_note['customer_note'];
 
 					$result = $this->submit_order_item_tracking( $order_id, $customer_note );
@@ -48,27 +48,64 @@ class PM_Paypal_Tracking {
 						die;
 					}
 				}
+
+				if ( isset( $_GET['dev_compare_string'] ) ) {
+					$str = 'Dev Unisex T-Shirt - Black /   S';
+					$str2 = 'Dev Unisex T-Shirt - Black / S';
+					echo 'Format string 1: ' . $this->format_string( $str ) . '<br/>';
+					echo 'Format string 2: ' . $this->format_string( $str2 ) . '<br/>';
+					die;
+				}
 			},
 			PHP_INT_MAX
 		);
+	}
+
+	public function format_string( $string = '' ) {
+		$string = strtolower( $string );
+		$string = str_replace( '-', ' ', $string );
+		$string = str_replace( ',', ' ', $string );
+		$string = str_replace( ':', ' ', $string );
+		$string = str_replace( ';', ' ', $string );
+		$string = str_replace( '.', ' ', $string );
+		$string = str_replace( '(', ' ', $string );
+		$string = str_replace( ')', ' ', $string );
+		$string = str_replace( '[', ' ', $string );
+		$string = str_replace( ']', ' ', $string );
+		$string = str_replace( '/', ' ', $string );
+		$string = preg_replace( '/\s+/', ' ', $string );
+		return $string;
 	}
 
 	public function submit_order_item_tracking( $order_id, $customer_note ) {
 		if ( ! class_exists( 'VI_WOO_ORDERS_TRACKING_ADMIN_IMPORT_CSV' ) ) {
 			return 'dependency_plugin_is_not_activated';
 		}
+		$return_code = 'order_not_valid';
 		$order = wc_get_order( $order_id );
 		if ( is_object( $order ) && method_exists( $order, 'get_id' ) ) {
 			$paypal_method = $order->get_payment_method();
 			if ( false !== strpos( $paypal_method, 'paypal' ) ) {
+				$tracking_number = '';
+				$item_sku = '';
+				$parse_item_name = '';
+
 				preg_match( '/<a(.*?)>(.*?)<\\/a>/si', $customer_note, $match );
 				if ( isset( $match[2] ) && ! empty( $match[2] ) ) {
 					$tracking_number = $match[2];
 				}
 
-				preg_match( '/\((.*?)\)/si', $customer_note, $match );
+				preg_match( '/(.*?)\((.*?)\)/si', $customer_note, $match );
+				if ( isset( $match[2] ) && ! empty( $match[2] ) ) {
+					$item_sku = $match[2];
+				}
+
 				if ( isset( $match[1] ) && ! empty( $match[1] ) ) {
-					$item_sku = $match[1];
+					$parse_item_name = $match[1];
+				}
+
+				if ( ! empty( $parse_item_name ) ) {
+					$parse_item_name = str_replace( '-', ' ', $parse_item_name );
 				}
 
 				if ( ! empty( $tracking_number ) && ! empty( $item_sku ) ) {
@@ -77,8 +114,8 @@ class PM_Paypal_Tracking {
 					foreach ( $order_items as $item ) {
 						$item_product     = $item->get_product();
 						$item_product_sku = $item_product->get_sku();
-
-						if ( $item_product_sku == $item_sku ) {
+						$item_product_name = $item_product->get_name();
+						if ( $item_product_sku == $item_sku || ( $this->format_string( $parse_item_name ) == $this->format_string( $item_product_name ) ) ) {
 							$order_item_id = $item->get_id();
 							break;
 						}
@@ -132,29 +169,36 @@ class PM_Paypal_Tracking {
 								$paypal_tracking   = new VI_WOO_ORDERS_TRACKING_ADMIN_ORDERS_EDIT_TRACKING();
 								$result_add_paypal = $paypal_tracking->add_trackinfo_to_paypal( $send_paypal, $paypal_method );
 								if ( 'error' === $result_add_paypal['status'] ) {
-									return 'error';
+									$return_code = 'error';
 								} else {
 									$paypal_added_trackings[] = $current_tracking_data['tracking_number'];
 									update_post_meta( $order_id, 'vi_wot_paypal_added_tracking_numbers', $paypal_added_trackings );
-									return 'success';
+									$return_code = 'success';
 								}
 							} else {
-								return 'tracking_already_added';
+								$return_code = 'tracking_already_added';
 							}
 						} else {
-							return 'item_id_not_valid';
+							$return_code = 'item_id_not_valid';
 						}
 					} else {
-						return 'item_id_not_valid';
+						$return_code = 'item_id_not_valid';
 					}
 				} else {
-					return 'tracking_or_item_id_not_valid';
+					$return_code = 'tracking_or_item_id_not_valid';
 				}
 			} else {
-				return 'payment_method_not_paypal';
+				$return_code = 'payment_method_not_paypal';
+			}
+			if ( ! empty( $return_code ) && method_exists( $order, 'add_order_note' ) ) {
+				$private_note = 'Try push tracking code to paypal: ';
+				if ( isset( $tracking_number ) && ! empty( $tracking_number ) ) {
+					$private_note = 'Try push tracking code "' . $tracking_number . '" to paypal: ';
+				}
+				$order->add_order_note( $private_note . $return_code );
 			}
 		}
-		return 'order_not_valid';
+		return $return_code;
 	}
 
 	public function detect_tracking_carrier_code( $tracking_code ) {
